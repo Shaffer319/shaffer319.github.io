@@ -17,29 +17,76 @@ function main() {
   // Vertex shader program
 
   const vsSource = `
-    attribute vec4 aVertexPosition;
-    attribute vec4 aVertexColor;
+  attribute vec4 aVertexPosition;
+  attribute vec4 aVertexColor;
 
-    uniform mat4 uModelViewMatrix;
-    uniform mat4 uProjectionMatrix;
+  uniform mat4 uModelViewMatrix;
+  uniform mat4 uProjectionMatrix;
 
-    varying lowp vec4 vColor;
+  varying highp vec4 vColor;
 
-    void main(void) {
-      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vColor = aVertexColor;
-    }
+  void main(void) {
+    gl_Position= uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+    vColor = aVertexColor;
+  }
   `;
-
-  // Fragment shader program
 
   const fsSource = `
-    varying lowp vec4 vColor;
+  varying highp vec4 vColor;
+  precision highp float;
+  void main(void){
+    float real = 0.0;
+    float treal = 0.0;
+    float img = 0.0;
+    float timg = 0.0;
+    vec4 oColor = vec4(0.0, 0.0, 0.0, 1.0);
 
-    void main(void) {
-      gl_FragColor = vColor;
+    for(float i = 0.0; i < 100.0; i++)
+    {
+      real = treal * treal - img * img + vColor.x + vColor.z;
+      img = 2.0 * treal * img + vColor.y + vColor.w;
+      treal = real;
+      timg = img;
+      if(real * real + img * img >= 4.0){
+        oColor = vec4(1.0, i/100.0, i/1000.0, 1.0);
+        break;
+      }
     }
+
+    gl_FragColor = oColor; 
+
+  }
   `;
+
+  // const vsSource = `
+  //   attribute vec4 aVertexPosition;
+  //   attribute vec4 aVertexColor;
+
+  //   uniform mat4 uModelViewMatrix;
+  //   uniform mat4 uProjectionMatrix;
+
+  //   varying lowp vec4 vColor;
+
+  //   void main(void) {
+  //     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+  //     vColor = aVertexColor;
+  //   }
+  // `;
+
+  // // Fragment shader program
+
+  // const fsSource = `
+  //   varying lowp vec4 vColor;
+  //   vec4 outColor;
+  //   void main(void) {
+  //     outColor = vec4(0.0, 0.0, 0.0, 0.0);
+  //     for(int i = 0; i < 1000; i++){
+         
+ 
+  //     }
+  //     gl_FragColor = vColor;
+  //   }
+  // `;
 
   // Initialize a shader program; this is where all the lighting
   // for the vertices and so forth is established.
