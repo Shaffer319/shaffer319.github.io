@@ -24,15 +24,18 @@ function main() {
   uniform mat4 uProjectionMatrix;
 
   varying highp vec4 vColor;
+  varying highp vec4 vPos;
 
   void main(void) {
     gl_Position= uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+    vPos = aVertexPosition;
     vColor = aVertexColor;
   }
   `;
 
   const fsSource = `
   varying highp vec4 vColor;
+  varying highp vec4 vPos;
   precision highp float;
   void main(void){
     float real = 0.0;
@@ -43,8 +46,8 @@ function main() {
 
     for(float i = 0.0; i < 100.0; i++)
     {
-      real = treal * treal - img * img + vColor.x + vColor.z;
-      img = 2.0 * treal * img + vColor.y + vColor.w;
+      real = treal * treal - img * img + vPos.x;
+      img = 2.0 * treal * img + vPos.y;
       treal = real;
       timg = img;
       if(real * real + img * img >= 4.0){
@@ -57,36 +60,6 @@ function main() {
 
   }
   `;
-
-  // const vsSource = `
-  //   attribute vec4 aVertexPosition;
-  //   attribute vec4 aVertexColor;
-
-  //   uniform mat4 uModelViewMatrix;
-  //   uniform mat4 uProjectionMatrix;
-
-  //   varying lowp vec4 vColor;
-
-  //   void main(void) {
-  //     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-  //     vColor = aVertexColor;
-  //   }
-  // `;
-
-  // // Fragment shader program
-
-  // const fsSource = `
-  //   varying lowp vec4 vColor;
-  //   vec4 outColor;
-  //   void main(void) {
-  //     outColor = vec4(0.0, 0.0, 0.0, 0.0);
-  //     for(int i = 0; i < 1000; i++){
-         
- 
-  //     }
-  //     gl_FragColor = vColor;
-  //   }
-  // `;
 
   // Initialize a shader program; this is where all the lighting
   // for the vertices and so forth is established.
@@ -211,6 +184,8 @@ function drawScene(gl, programInfo, buffers) {
   mat4.translate(modelViewMatrix,     // destination matrix
                  modelViewMatrix,     // matrix to translate
                  [-0.0, 0.0, -6.0]);  // amount to translate
+
+  mat4.scale(modelViewMatrix, modelViewMatrix, [3, 3, 1]);
 
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute
