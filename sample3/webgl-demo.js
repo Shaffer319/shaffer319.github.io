@@ -1,9 +1,21 @@
-main();
+main(-2, 2, -2, 2);
+
+
+
+function update(){
+  var xMin = parseFloat(document.getElementById("xMin").value)
+  var xMax =  parseFloat(document.getElementById("xMax").value)
+  var yMin = parseFloat(document.getElementById("yMin").value)
+  var yMax = parseFloat(document.getElementById("yMax").value)
+  var scale = parseFloat(document.getElementById("scale").value)
+  console.log(xMin + " " + xMax + " " + yMin + " " + yMax)
+  main(xMin, xMax, yMin, yMax)
+}
 
 //
 // Start here
 //
-function main() {
+function main(xMin, xMax, yMin, yMax) {
   const canvas = document.querySelector('#glcanvas');
   const gl = canvas.getContext('webgl');
 
@@ -18,6 +30,7 @@ function main() {
 
   const vsSource = `
   attribute vec4 aVertexPosition;
+  attribute vec4 aVertexCoords;
   attribute vec4 aVertexColor;
 
   uniform mat4 uModelViewMatrix;
@@ -28,7 +41,7 @@ function main() {
 
   void main(void) {
     gl_Position= uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-    vPos = aVertexPosition;
+    vPos = aVertexCoords;
     vColor = aVertexColor;
   }
   `;
@@ -74,6 +87,7 @@ function main() {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
+      vertexCoords: gl.getAttribLocation(shaderProgram, 'aVertexCoords')
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -83,10 +97,10 @@ function main() {
 
   // Here's where we call the routine that builds all the
   // objects we'll be drawing.
-  const buffers = initBuffers(gl);
+  const buffers = initBuffers(gl, xMin, xMax, yMin, yMax);
 
   // Draw the scene
-  drawScene(gl, programInfo, buffers);
+  drawScene(gl, programInfo, buffers, xMin, xMax, yMin, yMax);
 }
 
 //
@@ -95,7 +109,7 @@ function main() {
 // Initialize the buffers we'll need. For this demo, we just
 // have one object -- a simple two-dimensional square.
 //
-function initBuffers(gl) {
+function initBuffers(gl, xMin, xMax, yMin, yMax) {
 
   // Create a buffer for the square's positions.
 
@@ -134,16 +148,28 @@ function initBuffers(gl) {
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
 
+  const coords = [
+    xMax, yMax,
+    xMin, yMax,
+    xMax, yMin,
+    xMin, yMin
+  ];
+
+  const coordsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, coordsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
+
   return {
     position: positionBuffer,
     color: colorBuffer,
+    coords: coordsBuffer
   };
 }
 
 //
 // Draw the scene.
 //
-function drawScene(gl, programInfo, buffers) {
+function drawScene(gl, programInfo, buffers, xMin, xMax, yMin, yMax) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -185,7 +211,7 @@ function drawScene(gl, programInfo, buffers) {
                  modelViewMatrix,     // matrix to translate
                  [-0.0, 0.0, -6.0]);  // amount to translate
 
-  mat4.scale(modelViewMatrix, modelViewMatrix, [3, 3, 1]);
+                 mat4.scale(modelViewMatrix, modelViewMatrix, [3, 3, 1]);
 
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute
@@ -225,6 +251,24 @@ function drawScene(gl, programInfo, buffers) {
         offset);
     gl.enableVertexAttribArray(
         programInfo.attribLocations.vertexColor);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.coords);
+    gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexCoords,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset);
+    gl.enableVertexAttribArray(
+        programInfo.attribLocations.vertexCoords);
   }
 
   // Tell WebGL to use our program when drawing

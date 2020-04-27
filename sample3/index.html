@@ -8,6 +8,14 @@
 
   <body>
     <canvas id="glcanvas" width="640" height="480"></canvas>
+    <div>
+      <input id="xMin" type="text" value="-1"/>
+      <input id="xMax" type="text" value="2"/>
+      <input id="yMin" type="text" value="-2"/>
+      <input id="yMax" type="text" value="2"/>
+      <input id="scale" type="text" value="1"/>
+      <input type="button" value="Run" onclick="update()"/>
+    </div>
   </body>
 
   <script src="../gl-matrix.js"></script>
