@@ -7,7 +7,6 @@ function update(){
   var xMax =  parseFloat(document.getElementById("xMax").value)
   var yMin = parseFloat(document.getElementById("yMin").value)
   var yMax = parseFloat(document.getElementById("yMax").value)
-  var scale = parseFloat(document.getElementById("scale").value)
   console.log(xMin + " " + xMax + " " + yMin + " " + yMax)
   main(xMin, xMax, yMin, yMax)
 }
