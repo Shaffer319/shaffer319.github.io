@@ -1,5 +1,5 @@
-main(-2, 2, -2, 2);
-
+//main(-2, 2, -2, 2);
+main(-0.7444, -0.7464, 0.1092, 0.1112);
 
 
 function update(){
@@ -56,14 +56,21 @@ function main(xMin, xMax, yMin, yMax) {
     float timg = 0.0;
     vec4 oColor = vec4(0.0, 0.0, 0.0, 1.0);
 
-    for(float i = 0.0; i < 100.0; i++)
+    for(float i = 0.0; i < 1000.0; i++)
     {
       real = treal * treal - img * img + vPos.x;
       img = 2.0 * treal * img + vPos.y;
       treal = real;
       timg = img;
       if(real * real + img * img >= 4.0){
-        oColor = vec4(1.0, i/100.0, i/1000.0, 1.0);
+        // Choose color
+        if(i < 333.0){
+          oColor = vec4(1.0-(i/333.0), 0.0, 0.0, 1.0);
+        }else if(i < 666.0){
+          oColor = vec4(0.0, 1.0-(i-333.0)/333.0, 0.0, 1.0);
+        }else{
+          oColor = vec4(0.0, 0.0, 1.0-(i-666.0)/334.0, 1.0);
+        }
         break;
       }
     }
