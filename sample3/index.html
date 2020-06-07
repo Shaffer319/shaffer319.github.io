@@ -20,12 +20,14 @@
   </div>
   <div class="container-xl" style="margin-bottom:0">
     <div class="row" >
-      <canvas id="glcanvas" class="col-lg-8" width="1200" height="1200"></canvas>
-      <div class="col-sm-1">x1<input id="xMin" type="text" value="-1" /></div>
-      <div class="col-sm-1">x2<input id="xMax" type="text" value="2" /></div>
-      <div class="col-sm-1">y1<input id="yMin" type="text" value="-2" /></div>
-      <div class="col-sm-1">y2<input id="yMax" type="text" value="2" /></div>
-      <div class="col-sm-1"><input type="button" value="Run" onclick="update()" /></div>
+      <canvas id="glcanvas" class="col-sm-8" width="1200" height="1200"></canvas>
+      <div class="col-sm-4">
+        <div>x1<input id="xMin" type="text" value="-1" /></div>
+        <div>x2<input id="xMax" type="text" value="2" /></div>
+        <div>y1<input id="yMin" type="text" value="-2" /></div>
+        <div>y2<input id="yMax" type="text" value="2" /></div>
+        <div><input type="button" value="Run" onclick="update()" /></div>
+      </div>
     </div>
   </div>
 </body>
@@ -33,4 +35,4 @@
 <script src="../gl-matrix.js"></script>
 <script src="webgl-demo.js"></script>
 
-</html>
+</html> 

@@ -1,4 +1,5 @@
 //main(-2, 2, -2, 2);
+
 main(-0.7444, -0.7464, 0.1092, 0.1112);
 
 //
@@ -107,8 +108,46 @@ function main(xMin, xMax, yMin, yMax) {
   // objects we'll be drawing.
   const buffers = initBuffers(gl, xMin, xMax, yMin, yMax);
 
-  // Draw the scene
-  drawScene(gl, programInfo, buffers, xMin, xMax, yMin, yMax);
+  count = 0;
+  iterations = 10;
+
+  xMinStep = (-2 - xMin);
+  xMaxStep = (2 - xMax);
+  yMinStep = (-2 - yMin);
+  yMaxStep = (2 - yMax);
+
+  xMin = -2
+  xMax = 2
+  yMin = -2
+  yMax = 2
+  var then = 0;
+
+  function render(now){
+    now *= 0.001;  // convert to seconds
+    const deltaTime = now - then;
+    then = now;
+
+    count = count + deltaTime;
+    if (count > iterations){
+      return
+      count = 0;
+      xMin = -2;
+      xMax = 2;
+      yMin = -2;
+      yMax = 2;
+    }
+    xMin = -2 - xMinStep * (count / iterations)
+    xMax = 2 - xMaxStep * (count / iterations)
+    yMin = -2 - yMinStep * (count / iterations)
+    yMax = 2 - yMaxStep * (count / iterations)
+
+    // Draw the scene
+    drawScene(gl, programInfo, buffers, xMin, xMax, yMin, yMax);
+    
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
 }
 
 //
@@ -260,6 +299,12 @@ function drawScene(gl, programInfo, buffers, xMin, xMax, yMin, yMax) {
     gl.enableVertexAttribArray(
         programInfo.attribLocations.vertexColor);
   }
+  const coords = [
+    xMax, yMax,
+    xMin, yMax,
+    xMax, yMin,
+    xMin, yMin
+  ];
 
   {
     const numComponents = 2;
@@ -268,6 +313,8 @@ function drawScene(gl, programInfo, buffers, xMin, xMax, yMin, yMax) {
     const stride = 0;
     const offset = 0;
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.coords);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
+
     gl.vertexAttribPointer(
         programInfo.attribLocations.vertexCoords,
         numComponents,
