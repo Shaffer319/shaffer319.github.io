@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local PDF Image Extractor</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-zone {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            text-align: center;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fafafa;
+        }
+        #gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .img-card {
+            border: 1px solid #ddd;
+            padding: 8px;
+            background: #fff;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .img-card img {
+            max-width: 100%;
+            height: auto;
+            max-height: 150px;
+            display: block;
+            margin: 0 auto 8px;
+        }
+        .download-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>Offline PDF Image Extractor</h2>
+    <p>All processing happens locally inside your browser. No data is sent to the internet.</p>
+    
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <p>Tap here to select a PDF file</p>
+        <input type="file" id="fileInput" accept="application/pdf" style="display:none">
+    </div>
+
+    <div class="status" id="status"></div>
+    <div id="gallery"></div>
+</div>
+
+<script>
+    // Point PDF.js to its worker script
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    const fileInput = document.getElementById('fileInput');
+    const status = document.getElementById('status');
+    const gallery = document.getElementById('gallery');
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        gallery.innerHTML = '';
+        status.textContent = 'Processing PDF...';
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let imageCount = 0;
+
+            // Loop through every page in the PDF
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const operatorList = await page.getOperatorList();
+                
+                // Search the page objects for images
+                for (let i = 0; i < operatorList.fnArray.length; i++) {
+                    // Check if the operator function corresponds to painting an image
+                    if (operatorList.fnArray[i] === pdfjsLib.OPS.paintImageXObject || 
+                        operatorList.fnArray[i] === pdfjsLib.OPS.paintInlineImageXObject) {
+                        
+                        imageCount++;
+                        const imgKey = operatorList.argsArray[i][0];
+                        
+                        // Extract the image object data
+                        page.objs.get(imgKey, (imgData) => {
+                            if (!imgData) return;
+                            
+                            // Create a temporary canvas to construct the image file layout
+                            const canvas = document.createElement('canvas');
+                            canvas.width = imgData.width;
+                            canvas.height = imgData.height;
+                            const ctx = canvas.getContext('2d');
+                            
+                            // Generate image pixel data structure
+                            const rImgData = ctx.createImageData(imgData.width, imgData.height);
+                            
+                            // PDF.js provides raw pixel bytes; copy them to the canvas layout
+                            if (imgData.data.length === imgData.width * imgData.height * 3) {
+                                // RGB format conversion
+                                let j = 0;
+                                for (let k = 0; k < rImgData.data.length; k += 4) {
+                                    rImgData.data[k] = imgData.data[j];     // R
+                                    rImgData.data[k+1] = imgData.data[j+1]; // G
+                                    rImgData.data[k+2] = imgData.data[j+2]; // B
+                                    rImgData.data[k+3] = 255;               // Alpha
+                                    j += 3;
+                                }
+                            } else {
+                                // RGBA format conversion
+                                rImgData.data.set(imgData.data);
+                            }
+                            
+                            ctx.putImageData(rImgData, 0, 0);
+                            
+                            // Convert the canvas data directly into a local JPEG URL
+                            const imgUrl = canvas.toDataURL('image/jpeg');
+                            
+                            // Create UI element for display and download
+                            const card = document.createElement('div');
+                            card.className = 'img-card';
+                            
+                            const img = document.createElement('img');
+                            img.src = imgUrl;
+                            
+                            const btn = document.createElement('a');
+                            btn.className = 'download-btn';
+                            btn.href = imgUrl;
+                            btn.download = `extracted_image_${imageCount}.jpg`;
+                            btn.textContent = 'Save Image';
+                            
+                            card.appendChild(img);
+                            card.appendChild(btn);
+                            gallery.appendChild(card);
+                        });
+                    }
+                }
+            }
+            
+            status.textContent = imageCount > 0 ? `Found ${imageCount} image(s).` : 'No embedded images found in this PDF.';
+        } catch (error) {
+            console.error(error);
+            status.textContent = 'Error processing PDF file.';
+        }
+    });
+</script>
+
+</body>
+</html>
