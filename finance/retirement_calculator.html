@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>401(k Roth vs Traditional Simulator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 30px; }
+    label { display: block; margin-top: 10px; }
+    input, select { margin-top: 5px; padding: 5px; }
+    .section { border: 1px solid #ccc; padding: 15px; margin-top: 20px; }
+    .result { margin-top: 10px; padding: 10px; background: #f5f5f5; }
+    .toggle { margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <h1>401(k Roth vs Traditional Simulator</h1>
+
+  <!-- INPUT SECTION -->
+  <div class="section">
+    <h2>1. Current Inputs</h2>
+
+    <label>Annual salary ($): <input type="number" id="salary" value="100000"></label>
+    <label>Contribution rate (%): <input type="number" id="contributionRate" value="10"></label>
+    <label>Roth share (%): <input type="number" id="rothShare" value="50"></label>
+    <label>Current age: <input type="number" id="currentAge" value="35"></label>
+    <label>Retirement age: <input type="number" id="retirementAge" value="65"></label>
+    <label>Investment return (%): <input type="number" id="returnRate" value="7"></label>
+
+    <label>Federal marginal tax rate (%): <input type="number" id="fedMarginal" value="24"></label>
+
+    <label>State:
+      <select id="state"></select>
+    </label>
+
+    <h3>Tax Options</h3>
+    <label class="toggle"><input type="checkbox" id="optFederalBrackets" checked> Use federal tax brackets</label>
+    <label class="toggle"><input type="checkbox" id="optStateTax" checked> Include state tax</label>
+    <label class="toggle"><input type="checkbox" id="optSocialSecurity" checked> Include Social Security tax</label>
+    <label class="toggle"><input type="checkbox" id="optMedicare" checked> Include Medicare tax</label>
+    <label class="toggle"><input type="checkbox" id="optAddMedicare" checked> Include Additional Medicare tax</label>
+
+    <button onclick="runSimulation()">Run Simulation</button>
+  </div>
+
+  <!-- WITHDRAWAL SECTION -->
+  <div class="section">
+    <h2>2. Retirement Withdrawal</h2>
+
+    <label>Annual withdrawal ($): <input type="number" id="retirementWithdrawal" value="60000"></label>
+    <label>Retirement federal marginal (%): <input type="number" id="retirementFedMarginal" value="22"></label>
+    <label>Retirement state tax (%): <input type="number" id="retirementStateRate" value="5"></label>
+
+    <button onclick="runWithdrawal()">Calculate Withdrawal Taxes</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="section">
+    <h2>Results</h2>
+    <div id="results" class="result"></div>
+    <div id="withdrawalResults" class="result"></div>
+  </div>
+
+<script>
+/* -----------------------------
+   STATE TAX TABLE (flat rates)
+----------------------------- */
+const stateTaxRates = {
+  AL: 5, AK: 0, AZ: 4.5, AR: 5.5, CA: 9, CO: 4.4, CT: 5.5, DE: 5.5,
+  FL: 0, GA: 5.5, HI: 7, ID: 6, IL: 4.95, IN: 3.2, IA: 6, KS: 5.7,
+  KY: 5, LA: 4.25, ME: 5.8, MD: 5.75, MA: 5, MI: 4.25, MN: 6.8,
+  MS: 5, MO: 5.4, MT: 6.75, NE: 6.8, NV: 0, NH: 0, NJ: 6.37,
+  NM: 4.9, NY: 6.85, NC: 4.75, ND: 2.9, OH: 3.5, OK: 4.75,
+  OR: 8.75, PA: 3.07, RI: 5.99, SC: 6.5, SD: 0, TN: 0, TX: 0,
+  UT: 4.85, VT: 6.6, VA: 5.75, WA: 0, WV: 6.5, WI: 5.3, WY: 0
+};
+
+/* -----------------------------
+   FEDERAL TAX BRACKETS (2026)
+----------------------------- */
+const federalBrackets = [
+  { limit: 23200, rate: 0.10 },
+  { limit: 94300, rate: 0.12 },
+  { limit: 201050, rate: 0.22 },
+  { limit: 383900, rate: 0.24 },
+  { limit: 487450, rate: 0.32 },
+  { limit: 731200, rate: 0.35 },
+  { limit: Infinity, rate: 0.37 }
+];
+
+/* -----------------------------
+   Populate state dropdown
+----------------------------- */
+window.onload = () => {
+  const stateSelect = document.getElementById("state");
+  Object.keys(stateTaxRates).forEach(st => {
+    const opt = document.createElement("option");
+    opt.value = st;
+    opt.textContent = st;
+    stateSelect.appendChild(opt);
+  });
+  stateSelect.value = "MD"; // sensible default for you
+};
+
+/* -----------------------------
+   TAX ENGINE
+----------------------------- */
+function calcFederalTaxBrackets(income) {
+  let tax = 0;
+  let prev = 0;
+
+  for (const bracket of federalBrackets) {
+    const taxable = Math.min(income, bracket.limit) - prev;
+    if (taxable > 0) tax += taxable * bracket.rate;
+    if (income <= bracket.limit) break;
+    prev = bracket.limit;
+  }
+  return tax;
+}
+
+function calcTaxes(income, opts, stateRate, fedMarginal) {
+  let tax = 0;
+
+  // Federal brackets
+  if (opts.useFederalBrackets) {
+    tax += calcFederalTaxBrackets(income);
+  } else {
+    tax += income * (fedMarginal / 100);
+  }
+
+  // State tax
+  if (opts.useStateTax) {
+    tax += income * (stateRate / 100);
+  }
+
+  // Social Security
+  if (opts.useSocialSecurity) {
+    const ssCap = 168600;
+    const ssTaxable = Math.min(income, ssCap);
+    tax += ssTaxable * 0.062;
+  }
+
+  // Medicare
+  if (opts.useMedicare) {
+    tax += income * 0.0145;
+  }
+
+  // Additional Medicare
+  if (opts.useAddMedicare && income > 200000) {
+    tax += (income - 200000) * 0.009;
+  }
+
+  return tax;
+}
+
+/* -----------------------------
+   SIMULATION
+----------------------------- */
+function runSimulation() {
+  const salary = Number(document.getElementById("salary").value);
+  const contribRate = Number(document.getElementById("contributionRate").value) / 100;
+  const rothShare = Number(document.getElementById("rothShare").value) / 100;
+  const currentAge = Number(document.getElementById("currentAge").value);
+  const retirementAge = Number(document.getElementById("retirementAge").value);
+  const years = retirementAge - currentAge;
+  const returnRate = Number(document.getElementById("returnRate").value) / 100;
+  const fedMarginal = Number(document.getElementById("fedMarginal").value);
+  const state = document.getElementById("state").value;
+  const stateRate = stateTaxRates[state];
+
+  const opts = {
+    useFederalBrackets: document.getElementById("optFederalBrackets").checked,
+    useStateTax: document.getElementById("optStateTax").checked,
+    useSocialSecurity: document.getElementById("optSocialSecurity").checked,
+    useMedicare: document.getElementById("optMedicare").checked,
+    useAddMedicare: document.getElementById("optAddMedicare").checked
+  };
+
+  const annualContribution = salary * contribRate;
+  const rothContribution = annualContribution * rothShare;
+  const traditionalContribution = annualContribution * (1 - rothShare);
+
+  const taxableIncomeTraditional = salary - traditionalContribution;
+  const taxableIncomeRoth = salary;
+
+  const taxTraditional = calcTaxes(taxableIncomeTraditional, opts, stateRate, fedMarginal);
+  const taxRoth = calcTaxes(taxableIncomeRoth, opts, stateRate, fedMarginal);
+
+  function futureValue(payment, rate, nYears) {
+    return payment * ((Math.pow(1 + rate, nYears) - 1) / rate);
+  }
+
+  const rothFuture = futureValue(rothContribution, returnRate, years);
+  const traditionalFuture = futureValue(traditionalContribution, returnRate, years);
+
+  window._rothFuture = rothFuture;
+  window._traditionalFuture = traditionalFuture;
+
+  document.getElementById("results").innerHTML = `
+    <h3>Contribution & Taxes Now</h3>
+    <p><strong>State:</strong> ${state}</p>
+    <p><strong>Annual contribution:</strong> $${annualContribution.toFixed(2)}</p>
+    <p><strong>Roth contribution:</strong> $${rothContribution.toFixed(2)}</p>
+    <p><strong>Traditional contribution:</strong> $${traditionalContribution.toFixed(2)}</p>
+    <p><strong>Tax now (Traditional mix):</strong> $${taxTraditional.toFixed(2)}</p>
+    <p><strong>Tax now (All Roth):</strong> $${taxRoth.toFixed(2)}</p>
+
+    <h3>Projected Balances at Retirement</h3>
+    <p><strong>Roth 401(k):</strong> $${rothFuture.toFixed(2)}</p>
+    <p><strong>Traditional 401(k):</strong> $${traditionalFuture.toFixed(2)}</p>
+  `;
+}
+
+/* -----------------------------
+   WITHDRAWAL
+----------------------------- */
+function runWithdrawal() {
+  const withdrawal = Number(document.getElementById("retirementWithdrawal").value);
+  const fedMarginal = Number(document.getElementById("retirementFedMarginal").value);
+  const stateRate = Number(document.getElementById("retirementStateRate").value);
+
+  const rothFuture = window._rothFuture || 0;
+  const traditionalFuture = window._traditionalFuture || 0;
+
+  const totalBalance = rothFuture + traditionalFuture;
+  const rothPortion = withdrawal * (rothFuture / totalBalance);
+  const traditionalPortion = withdrawal * (traditionalFuture / totalBalance);
+
+  const taxTraditional = traditionalPortion * ((fedMarginal + stateRate) / 100);
+  const afterTaxTraditional = traditionalPortion - taxTraditional;
+
+  document.getElementById("withdrawalResults").innerHTML = `
+    <h3>Retirement Withdrawals</h3>
+    <p><strong>Total withdrawal:</strong> $${withdrawal.toFixed(2)}</p>
+    <p><strong>Roth portion (tax-free):</strong> $${rothPortion.toFixed(2)}</p>
+    <p><strong>Traditional portion (taxable):</strong> $${traditionalPortion.toFixed(2)}</p>
+    <p><strong>Tax on Traditional:</strong> $${taxTraditional.toFixed(2)}</p>
+    <p><strong>Total after-tax income:</strong> $${(afterTaxTraditional + rothPortion).toFixed(2)}</p>
+  `;
+}
+</script>
+</body>
+</html>
